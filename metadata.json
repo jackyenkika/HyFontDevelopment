@@ -1,0 +1,5 @@
+{
+  "name": "HyFont字樣圖片快速產出工具",
+  "description": "上傳 TTF/OTF 字體並產出特定尺寸 (1055x127, 700x166) 或自定義尺寸 (400-5000px) 的字符字樣圖片，支援多國語言預設與圖片合併功能。",
+  "requestFramePermissions": []
+}

@@ -136,6 +136,9 @@ export default function App() {
   const [isCollageMode, setIsCollageMode] = useState(false);
   const [collageLayout, setCollageLayout] = useState<'grid' | 'vertical'>('grid');
   const [selectedCollageIds, setSelectedCollageIds] = useState<string[]>([]);
+
+  // CopyWright states
+  const [showCopyright, setShowCopyright] = useState<boolean>(false);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -271,6 +274,45 @@ export default function App() {
     return lines;
   };
 
+  const drawCopyrightInfo = (
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    fontName: string,
+    languageId: string
+  ) => {
+    if (!showCopyright) return;
+
+    const workName = fontName.replace(/\.[^/.]+$/, '');
+    const text = `作品名称：${workName}\n作者：北京新美互通科技有限公司\n著作权人：北京新美互通科技有限公司`;
+
+    ctx.save();
+    ctx.fillStyle = '#000000';
+
+    const copyrightFontSize = 10; 
+    ctx.font = `${copyrightFontSize}px sans-serif`;
+
+    const lines = text.split('\n');
+    const padding = 8;
+    const lineHeight = copyrightFontSize * 1.6;
+
+    // 根據語言決定位置
+    if (languageId === 'ar') {
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      lines.forEach((line, index) => {
+        ctx.fillText(line, padding, padding + index * lineHeight);
+      });
+    } else {
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'top';
+      lines.forEach((line, index) => {
+        ctx.fillText(line, width - padding, padding + index * lineHeight);
+      });
+    }
+
+    ctx.restore();
+  };
+
   const drawSingleFont = (ctx: CanvasRenderingContext2D, font: LoadedFont, width: number, height: number) => {
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
@@ -307,6 +349,8 @@ export default function App() {
     lines.forEach((line, index) => {
       ctx.fillText(line, xPos, startY + index * activeFontSize * activeLineHeight);
     });
+
+    drawCopyrightInfo(ctx, width, font.fileName, selectedLang.id);
   };
 
   const drawCollage = (ctx: CanvasRenderingContext2D, collageFonts: LoadedFont[], totalWidth: number, totalHeight: number, cellWidth: number, cellHeight: number, scale: number = 1) => {
@@ -337,14 +381,62 @@ export default function App() {
       const labelFontSize = Math.max(14, Math.min(48, Math.round(cellHeight * 0.08)));
       const labelHeight = Math.round(labelFontSize * 1.8);
       
-      ctx.fillStyle = '#f9f9f9';
-      ctx.fillRect(x + 2, y + 2, cellWidth - 4, labelHeight);
-      ctx.fillStyle = '#333333';
-      ctx.font = `bold ${labelFontSize}px sans-serif`;
-      (ctx as any).letterSpacing = '0px'; // Labels don't use custom letter spacing
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(f.fileName, x + labelFontSize * 0.75, y + labelHeight / 2 + 2);
+      const workName = f.fileName.replace(/\.[^/.]+$/, '');
+
+      if (showCopyright) {
+        const infoText = `作品名称：${workName}\n作者：北京新美互通科技有限公司\n著作权人：北京新美互通科技有限公司`;
+
+        const lines = infoText.split('\n');
+
+        ctx.fillStyle = '#f9f9f9';
+        ctx.fillRect(x + 2, y + 2, cellWidth - 4, labelHeight * 2);
+
+        ctx.fillStyle = '#333333';
+        ctx.font = `bold ${labelFontSize}px sans-serif`;
+        const languageId = selectedLang.id
+        const padding = 8;
+        const lineHeight = labelFontSize * 1.6;
+
+        // 根據語言決定位置
+        if (languageId === 'ar') {
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          lines.forEach((line, index) => {
+            ctx.fillText(line, x + padding, y + padding + index * lineHeight);
+          });
+        } else {
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'top';
+          lines.forEach((line, index) => {
+            ctx.fillText(line, x + cellWidth - padding, y + padding + index * lineHeight);
+          });
+        }
+
+        // ctx.textAlign = 'left';
+        // ctx.textBaseline = 'top';
+
+        // lines.forEach((line, index) => {
+        //   ctx.fillText(
+        //     line,
+        //     x + labelFontSize * 0.75,
+        //     y + 6 + index * (labelFontSize + 4)
+        //   );
+        // });
+      } else {
+        ctx.fillStyle = '#f9f9f9';
+        ctx.fillRect(x + 2, y + 2, cellWidth - 4, labelHeight);
+
+        ctx.fillStyle = '#333333';
+        ctx.font = `bold ${labelFontSize}px sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+
+        ctx.fillText(
+          workName,
+          x + labelFontSize * 0.75,
+          y + labelHeight / 2 + 2
+        );
+      }
 
       // Draw Specimen
       const isSingleLine = selectedSize.width === 1055 && !selectedSize.isCustom;
@@ -417,11 +509,22 @@ export default function App() {
       
       drawSingleFont(ctx, fontToDraw, width, height);
     }
-  }, [fonts, currentFont, selectedSize, selectedLang, customText, temp700Text, singleLineText, fontSize, lineHeight, letterSpacing, customWidth, customHeight, isCollageMode, selectedCollageIds]);
+  }, [fonts, currentFont, selectedSize, selectedLang, customText, temp700Text, singleLineText, fontSize, lineHeight, letterSpacing, customWidth, customHeight, isCollageMode, selectedCollageIds , showCopyright]);
 
   useEffect(() => {
     drawCanvas();
   }, [drawCanvas]);
+
+  const collageFonts = fonts.filter(f => selectedCollageIds.includes(f.id));
+
+  const fontsToProcess =
+    collageFonts.length > 0
+      ? collageFonts
+      : (currentFont ? [currentFont] : []);
+
+  const processCount = isCollageMode && collageFonts.length > 1
+    ? collageFonts.length
+    : fontsToProcess.length;
 
   const downloadImage = async () => {
     const canvas = canvasRef.current;
@@ -841,6 +944,27 @@ export default function App() {
                 </section>
               )}
 
+              {/* Copywright */}
+              <section className="p-6 bg-blue-50 rounded-3xl border border-blue-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-mono uppercase text-blue-800">
+                    顯示著作資訊
+                  </div>
+                  <button
+                    onClick={() => setShowCopyright(!showCopyright)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      showCopyright ? 'bg-blue-600' : 'bg-blue-200'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        showCopyright ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </section>
+
               {/* Adjustments */}
               <section className="p-6 bg-white rounded-3xl shadow-sm border border-[#141414]/5 space-y-6">
                 <div className="flex items-center justify-between mb-2">
@@ -1001,7 +1125,7 @@ export default function App() {
                   <div className="flex flex-col items-start leading-tight">
                     <span className="text-xl font-medium">產出並下載{exportFormat === 'pdf' ? '文件' : '圖片'}</span>
                     <span className="text-[10px] opacity-50 uppercase tracking-widest">
-                      {isCollageMode ? `組合合併 ${selectedCollageIds.length} 款字體` : (fonts.length > 1 ? `批次處理 ${fonts.length} 款字重` : '單一字重產出')}
+                      {isCollageMode && collageFonts.length > 1 ? `組合合併 ${processCount} 款字體` : (processCount > 1 ? `批次處理 ${processCount} 款字重` : '單一字重產出')}
                     </span>
                   </div>
                 </button>

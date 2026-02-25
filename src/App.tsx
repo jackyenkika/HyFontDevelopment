@@ -389,9 +389,6 @@ export default function App() {
 
         const lines = infoText.split('\n');
 
-        ctx.fillStyle = '#f9f9f9';
-        ctx.fillRect(x + 2, y + 2, cellWidth - 4, labelHeight * 2);
-
         ctx.fillStyle = '#333333';
         ctx.font = `bold ${labelFontSize}px sans-serif`;
         const languageId = selectedLang.id
@@ -412,17 +409,6 @@ export default function App() {
             ctx.fillText(line, x + cellWidth - padding, y + padding + index * lineHeight);
           });
         }
-
-        // ctx.textAlign = 'left';
-        // ctx.textBaseline = 'top';
-
-        // lines.forEach((line, index) => {
-        //   ctx.fillText(
-        //     line,
-        //     x + labelFontSize * 0.75,
-        //     y + 6 + index * (labelFontSize + 4)
-        //   );
-        // });
       } else {
         ctx.fillStyle = '#f9f9f9';
         ctx.fillRect(x + 2, y + 2, cellWidth - 4, labelHeight);
@@ -608,36 +594,30 @@ export default function App() {
         // Loop through selected fonts and generate images
         const fontsToProcess = collageFonts.length > 0 ? collageFonts : (currentFont ? [currentFont] : []);
         
-        if (exportFormat === 'pdf' && fontsToProcess.length > 1) {
-          // Multi-page PDF for batch processing
-          const pdf = new jsPDF({
-            orientation: width > height ? 'landscape' : 'portrait',
-            unit: 'px',
-            format: [width, height]
-          });
+        for (const f of fontsToProcess) {
+          drawCanvas(f);
+          await new Promise(resolve => setTimeout(resolve, 100));
 
-          for (let i = 0; i < fontsToProcess.length; i++) {
-            const f = fontsToProcess[i];
-            drawCanvas(f);
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            if (i > 0) pdf.addPage([width, height], width > height ? 'landscape' : 'portrait');
+          const fontName = f.fileName.split('.')[0];
+
+          if (exportFormat === 'pdf') {
+            const pdf = new jsPDF({
+              orientation: width > height ? 'landscape' : 'portrait',
+              unit: 'px',
+              format: [width, height]
+            });
+
             pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, width, height);
-          }
-          
-          pdf.save(`batch-export-${Date.now()}.pdf`);
-        } else {
-          for (const f of fontsToProcess) {
-            drawCanvas(f);
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            const fontName = f.fileName.split('.')[0];
+            pdf.save(`${fontName}-${width}x${height}.pdf`);
+          } else {
             const ext = exportFormat === 'jpg' ? 'jpg' : 'png';
-            const fileName = `${fontName}-${width}x${height}.${ext}`;
             const mimeType = exportFormat === 'jpg' ? 'image/jpeg' : 'image/png';
             const quality = exportFormat === 'jpg' ? 0.9 : 1.0;
-            
-            triggerDownload(canvas.toDataURL(mimeType, quality), fileName);
+
+            const link = document.createElement('a');
+            link.download = `${fontName}-${width}x${height}.${ext}`;
+            link.href = canvas.toDataURL(mimeType, quality);
+            link.click();
           }
         }
       }

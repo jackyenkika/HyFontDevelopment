@@ -289,6 +289,7 @@ export default function App() {
     ctx.fillStyle = '#000000';
 
     const copyrightFontSize = 10; 
+    (ctx as any).letterSpacing = '0px';
     ctx.font = `${copyrightFontSize}px sans-serif`;
 
     const lines = text.split('\n');
